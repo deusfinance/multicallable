@@ -11,9 +11,9 @@ DESCRIPTION
 
 from typing import List
 
-import web3.contract
 from eth_abi import decode_single
 from web3 import Web3
+from web3.contract import Contract
 
 from .constants import MULTICALL_ABI, MULTICALL_ADDRESS, CHAIN_NANE
 
@@ -44,7 +44,7 @@ class Call:
 
     def __init__(
             self,
-            contract: web3.contract.Contract,
+            contract: Contract,
             fn_name: str,
             args: list
     ):
