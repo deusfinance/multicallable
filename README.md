@@ -74,7 +74,7 @@ web3.exceptions.ContractLogicError: execution reverted: Multicall3: call failed
 #### Change number of buckets
 
 Set `n` as the number of buckets for calling Multicall contract for large number of calls. \
-Thde default value is `1`.
+The default value is `1`.
 ```python
 >>> result = mc.getNum(list(range(70000)), require_success=False)
 Traceback (most recent call last):
