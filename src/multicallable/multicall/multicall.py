@@ -76,22 +76,33 @@ class Multicall:
             An ABI of custom multicall smart contract.
             If omitted, MakerDao Multicall smart contract ABI will be used.
 
+        custom_chain_name: str
+            A custom name for provider chain.
+            Use for loading MakerDao Multicall smart contract address from default dictionary.
+
     """
 
     def __init__(
             self,
             w3: Web3,
             custom_address: str = None,
-            custom_abi: str = None
+            custom_abi: str = None,
+            custom_chain_name: str = None
     ):
         if custom_address:
             address = Web3.toChecksumAddress(custom_address)
         else:
-            chain_id = w3.eth.chain_id
-            try:
-                address = Web3.toChecksumAddress(MULTICALL_ADDRESS[CHAIN_NANE[chain_id]])
-            except KeyError:
-                raise ValueError(f'Chain ID {chain_id} is not in default dictionary')
+            if custom_chain_name:
+                try:
+                    address = Web3.toChecksumAddress(MULTICALL_ADDRESS[custom_chain_name.lower()])
+                except KeyError:
+                    raise ValueError(f'Chain name `{custom_chain_name}` is not in default dictionary')
+            else:
+                chain_id = w3.eth.chain_id
+                try:
+                    address = Web3.toChecksumAddress(MULTICALL_ADDRESS[CHAIN_NANE[chain_id]])
+                except KeyError:
+                    raise ValueError(f'Chain ID {chain_id} is not in default dictionary')
 
         abi = custom_abi or MULTICALL_ABI
 
