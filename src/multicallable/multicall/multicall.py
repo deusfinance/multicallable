@@ -133,6 +133,13 @@ class Multicall:
         outputs = []
         for call, result in zip(calls, return_data):
             success, data = result
+            if not success:
+                try:
+                    error_message = ''.join(chr(c) for c in data[-32:] if c)
+                except:
+                    error_message = 'Error'
+                outputs.append(ValueError(error_message))
+                continue
             for item in call.abi:
                 if item.get('name') == call.fn_name:
                     out_type = '(' + ','.join(get_type(schema) for schema in item['outputs']) + ')'
