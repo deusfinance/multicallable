@@ -20,7 +20,10 @@ from .constants import MULTICALL_ABI, MULTICALL_ADDRESS, CHAIN_NANE
 
 def get_type(schema):
     if schema.get('internalType', '').startswith('struct'):
-        return '(' + ','.join(get_type(x) for x in schema['components']) + ')'
+        postfix = '[]' if schema['internalType'].endswith('[]') else ''
+        return '(' + ','.join(get_type(x) for x in schema['components']) + ')' + postfix
+    elif schema.get('internalType', '').startswith('enum'):
+        return schema['type']
     return schema.get('internalType', schema['type'])
 
 
