@@ -10,19 +10,41 @@ def _split(a, n):
 
 class Multicallable:
     class Function:
+        class FCall:
+            def __init__(self, function: 'Multicallable.Function', params: list):
+                self.function = function
+                self.params = params
+
+            def call(self, n: int = 1, require_success: bool = True):
+                mc = self.function.parent.multicall
+                calls = [Call(self.function.parent.target, self.function.name, args) for args in self.params]
+                result = []
+                for bucket in _split(calls, n):
+                    if not bucket:
+                        continue
+                    block_number, block_hash, outputs = mc.call(bucket, require_success=require_success)
+                    result.extend(outputs)
+                return result
+
+            def detailed_call(self, n: int = 1, require_success: bool = True):
+                mc = self.function.parent.multicall
+                calls = [Call(self.function.parent.target, self.function.name, args) for args in self.params]
+                result = []
+                for bucket in _split(calls, n):
+                    if not bucket:
+                        continue
+                    block_number, block_hash, outputs = mc.call(bucket, require_success=require_success)
+                    if not result or result[-1]['block_number'] != block_number:
+                        result.append(dict(block_number=block_number, result=[]))
+                    result[-1]['result'].extend(outputs)
+                return result
+
         def __init__(self, name: str, parent: 'Multicallable'):
             self.name = name
             self.parent = parent
 
-        def __call__(self, params: list, n: int = 1, require_success: bool = True) -> list:
-            mc = self.parent.multicall
-            calls = [Call(self.parent.target, self.name, args) for args in params]
-            result = []
-            for bucket in _split(calls, n):
-                if not bucket:
-                    continue
-                result.extend(mc.call(bucket, require_success=require_success))
-            return result
+        def __call__(self, params: list) -> list:
+            return self.FCall(self, params)
 
     def __init__(self, target_address: str, target_abi: str, w3: Web3 = None, multicall: Multicall = None):
         if not w3 and not multicall:

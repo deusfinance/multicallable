@@ -150,4 +150,4 @@ class Multicall:
                     outputs.append(decoded_output)
                     break
 
-        return outputs
+        return block_number, block_hash, outputs
