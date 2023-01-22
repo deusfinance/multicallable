@@ -9,7 +9,7 @@ DESCRIPTION
 
 """
 
-from typing import List
+from typing import List, Union
 
 from eth_abi import decode_single
 from web3 import Web3
@@ -49,11 +49,12 @@ class Call:
             self,
             contract: Contract,
             fn_name: str,
-            args: list
+            args: Union[list, tuple] = None,
+            kwargs: dict = None,
     ):
         if not isinstance(args, list) and not isinstance(args, tuple):
             args = [args]
-        call_data = contract.encodeABI(fn_name=fn_name, args=args)
+        call_data = contract.encodeABI(fn_name=fn_name, args=args, kwargs=kwargs)
         self.target = contract.address
         self.abi = contract.abi
         self.fn_name = fn_name
