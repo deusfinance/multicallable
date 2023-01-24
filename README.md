@@ -43,10 +43,10 @@ Calling balanceOf function for a list of addresses
 ...     '0x633cBf6347ddddb5fEc65ad803b4e0B282ADdBd7',
 ... ]
 >>> deus.balanceOf(addresses).call()
-[(3955776201653330000000,),
- (1499972538000000000000,),
- (334010000000000000000,),
- (135760891050327000000,)]
+[3955776201653330000000,
+ 1499972538000000000000,
+ 334010000000000000000,
+ 135760891050327000000]
 ```
 
 #### Get more details for call
@@ -59,10 +59,10 @@ Calling balanceOf function for a list of addresses
 ... ]
 >>> deus.balanceOf(addresses).detailed_call()
 [{'block_number': 54040756,
-  'result': [(3955776201653330000000,),
-             (1499972538000000000000,),
-             (334010000000000000000,),
-             (135760891050327000000,)]}]
+  'result': [3955776201653330000000,
+             1499972538000000000000,
+             334010000000000000000,
+             135760891050327000000]}]
 ```
 
 #### Ignore failed calls
@@ -82,12 +82,12 @@ web3.exceptions.ContractLogicError: execution reverted: Multicall3: call failed
 
 >>> mc.getNum(list(range(7))).call(require_success=False)
 [ValueError('Bad number!'),
- (2,),
- (3,),
- (4,),
- (5,),
+ 2,
+ 3,
+ 4,
+ 5,
  ValueError('Bad number!'),
- (7,)]
+ 7]
 ```
 
 #### Change number of buckets

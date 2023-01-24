@@ -148,6 +148,8 @@ class Multicall:
                 if item.get('name') == call.fn_name:
                     out_type = '(' + ','.join(get_type(schema) for schema in item['outputs']) + ')'
                     decoded_output = decode_single(out_type, data)
+                    if len(item['outputs']) == 1:
+                        decoded_output = decoded_output[0]
                     outputs.append(decoded_output)
                     break
 
