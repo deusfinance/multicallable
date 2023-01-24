@@ -16,8 +16,8 @@ class Multicallable:
                 self.params = params
 
             def call(self, n: int = 1, require_success: bool = True):
-                mc = self.function.parent.multicall
-                calls = [Call(self.function.parent.target, self.function.name, args) for args in self.params]
+                mc = self.function.parent._multicall
+                calls = [Call(self.function.parent._target, self.function.name, args) for args in self.params]
                 result = []
                 for bucket in _split(calls, n):
                     if not bucket:
@@ -27,8 +27,8 @@ class Multicallable:
                 return result
 
             def detailed_call(self, n: int = 1, require_success: bool = True):
-                mc = self.function.parent.multicall
-                calls = [Call(self.function.parent.target, self.function.name, args) for args in self.params]
+                mc = self.function.parent._multicall
+                calls = [Call(self.function.parent._target, self.function.name, args) for args in self.params]
                 result = []
                 for bucket in _split(calls, n):
                     if not bucket:
@@ -49,11 +49,19 @@ class Multicallable:
     def __init__(self, target_address: str, target_abi: str, w3: Web3 = None, multicall: Multicall = None):
         if not w3 and not multicall:
             raise TypeError("__init__() missing 1 required argument: 'w3' or 'multicall' (at least one required)")
-        self.multicall = multicall or Multicall(w3)
-        w3 = self.multicall.contract.web3
-        self.target = w3.eth.contract(w3.toChecksumAddress(target_address), abi=target_abi)
+        self._multicall = multicall or Multicall(w3)
+        w3 = self._multicall.contract.web3
+        self._target = w3.eth.contract(w3.toChecksumAddress(target_address), abi=target_abi)
+        self._functions = {}
         self._setup_functions()
 
+    def __getattr__(self, function_name: str) -> 'Multicallable.Function':
+        if function_name not in self._functions:
+            raise AttributeError(f"The function '{function_name}' was not found in this contract's abi.")
+        return self._functions[function_name]
+
     def _setup_functions(self):
-        for func in filter(lambda x: x.get('stateMutability') in ('view', 'pure'), self.target.abi):
-            self.__setattr__(func['name'], Multicallable.Function(func['name'], self))
+        for func in filter(lambda x: x.get('stateMutability') in ('view', 'pure'), self._target.abi):
+            function = Multicallable.Function(func['name'], self)
+            self._functions[func['name']] = function
+            setattr(self, func['name'], function)
