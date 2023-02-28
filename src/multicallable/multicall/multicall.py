@@ -137,7 +137,7 @@ class Multicall:
         outputs = []
         for call, result in zip(calls, return_data):
             success, data = result
-            if not success:
+            if not success or not data:
                 try:
                     error_message = ''.join(chr(c) for c in data[-32:] if c)
                 except:
