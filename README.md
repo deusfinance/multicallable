@@ -107,6 +107,15 @@ ValueError: {'code': -32000, 'message': 'out of gas'}
 70000
 ```
 
+#### Show progress bar
+Use `progress_bar=True` to show progress bar while sending buckets.
+```python
+>>> result = mc.getNum(list(range(70000))).call(n=100, progress_bar=True, require_success=False)
+    ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 100/100 buckets
+>>> len(result)
+70000
+```
+
 #### Use with custom Multicall
 
 It is possible to pass a Multicall instance with custom address and abi to Multicallable
