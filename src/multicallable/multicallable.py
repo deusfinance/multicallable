@@ -1,6 +1,8 @@
+from eth_account import Account
+from eth_account.signers.local import LocalAccount
 from web3 import Web3
 
-from .multicall import Multicall, Call
+from .multicall import Multicall, Call, TxReceipt
 
 
 def bar(percentage: float, size: int = 40):
@@ -62,6 +64,32 @@ class Multicallable:
                     result[-1]['result'].extend(outputs)
                 return result
 
+            def execute(self,
+                        *,
+                        account: LocalAccount = None,
+                        private_key: str = None,
+                        transaction_params: dict = None,
+                        require_success: bool = True
+                        ) -> TxReceipt:
+                if account is None:
+                    if private_key is None:
+                        _name = 'Multicallable.Function.FCall.execute()'
+                        raise TypeError(f"{_name} missing 1 required keyword-only argument: 'account' or 'private_key'")
+                    account = Account.from_key(private_key)
+
+                mc = self.function.parent._multicall
+                if transaction_params is None:
+                    transaction_params = {
+                        'from': account.address,
+                        'chainId': mc.w3.eth.chain_id,
+                        'nonce': mc.w3.eth.get_transaction_count(account.address),
+                        'gasPrice': mc.w3.eth.gas_price,
+                    }
+
+                calls = [Call(self.function.parent._target, self.function.name, args) for args in self.params]
+                tx_receipt = mc.execute(calls, transaction_params, account, require_success)
+                return tx_receipt
+
         def __init__(self, name: str, parent: 'Multicallable'):
             self.name = name
             self.parent = parent
@@ -84,7 +112,13 @@ class Multicallable:
         return self._functions[function_name]
 
     def _setup_functions(self):
-        for func in filter(lambda x: x.get('stateMutability') in ('view', 'pure'), self._target.abi):
-            function = Multicallable.Function(func['name'], self)
-            self._functions[func['name']] = function
-            setattr(self, func['name'], function)
+        for func in filter(lambda x: x.get('type') == 'function', self._target.abi):
+            state = func.get('stateMutability')
+            if state in ('view', 'pure'):
+                function = Multicallable.Function(func['name'], self)
+                self._functions[func['name']] = function
+                setattr(self, func['name'], function)
+            elif state in ('nonpayable', 'payable'):
+                function = Multicallable.Function(func['name'], self)
+                self._functions[func['name']] = function
+                setattr(self, func['name'], function)

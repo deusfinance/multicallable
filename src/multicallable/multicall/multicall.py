@@ -9,11 +9,15 @@ DESCRIPTION
 
 """
 
-from typing import List, Union
+from typing import List, Union, Optional
 
 from eth_abi import decode_single
+from eth_account.signers.local import LocalAccount
+from eth_typing import BlockNumber, ChecksumAddress, HexStr
+from hexbytes import HexBytes
 from web3 import Web3
 from web3.contract import Contract
+from web3.types import Wei, LogReceipt
 
 from .constants import MULTICALL_ABI, MULTICALL_ADDRESS, CHAIN_NANE
 
@@ -25,6 +29,27 @@ def get_type(schema):
     elif schema.get('internalType', '').startswith('enum'):
         return schema['type']
     return schema.get('internalType', schema['type'])
+
+
+class TxReceipt:
+    def __init__(self, receipt: dict):
+        self.block_hash: HexBytes = receipt.get('blockHash')
+        self.block_number: BlockNumber = receipt.get('blockNumber')
+        self.contract_address: Optional[ChecksumAddress] = receipt.get('contractAddress')
+        self.cumulative_gas_used: int = receipt.get('cumulativeGasUsed')
+        self.effective_gas_price: int = receipt.get('effectiveGasPrice')
+        self.gas_used: Wei = receipt.get('gasUsed')
+        self.from_: ChecksumAddress = receipt.get('from')
+        self.logs: List[LogReceipt] = receipt.get('logs')
+        self.logs_bloom: HexBytes = receipt.get('logsBloom')
+        self.root: HexStr = receipt.get('root')
+        self.status: int = receipt.get('status')
+        self.to: ChecksumAddress = receipt.get('to')
+        self.transaction_hash: HexBytes = receipt.get('transactionHash')
+        self.transaction_index: int = receipt.get('transactionIndex')
+
+    def successful(self) -> bool:
+        return bool(self.status)
 
 
 class Call:
@@ -93,6 +118,7 @@ class Multicall:
             custom_abi: str = None,
             custom_chain_name: str = None
     ):
+        self.w3 = w3
         if custom_address:
             address = Web3.toChecksumAddress(custom_address)
         else:
@@ -111,6 +137,33 @@ class Multicall:
         abi = custom_abi or MULTICALL_ABI
 
         self.contract = w3.eth.contract(address=address, abi=abi)
+
+    def execute(
+            self,
+            calls: List[Call],
+            transaction_params: dict,
+            account: LocalAccount,
+            require_success: bool = True,
+    ) -> TxReceipt:
+        raw_transaction = self.contract.functions.tryAggregate(
+            require_success, [(call.target, call.call_data) for call in calls])
+        for param in ('from', 'nonce', 'gasPrice'):
+            if param not in transaction_params:
+                raise ValueError(f'Missing param: {param}')
+
+        transaction = raw_transaction.buildTransaction(transaction_params)
+        if require_success:
+            estimated_gas = self.w3.eth.estimate_gas(transaction)
+            if 'gas' not in transaction_params:
+                gas_limit = round(estimated_gas * 1.5)
+                transaction['gas'] = gas_limit
+
+        signed_transaction = account.sign_transaction(transaction)
+        self.w3.eth.send_raw_transaction(signed_transaction.rawTransaction)
+        transaction_hash = self.w3.toHex(signed_transaction.hash)
+        print(transaction_hash)
+        receipt = self.w3.eth.wait_for_transaction_receipt(transaction_hash)
+        return TxReceipt(receipt)
 
     def call(
             self,
