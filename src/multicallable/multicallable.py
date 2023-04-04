@@ -73,8 +73,8 @@ class Multicallable:
         if not w3 and not multicall:
             raise TypeError("__init__() missing 1 required argument: 'w3' or 'multicall' (at least one required)")
         self._multicall = multicall or Multicall(w3)
-        w3 = self._multicall.contract.web3
-        self._target = w3.eth.contract(w3.toChecksumAddress(target_address), abi=target_abi)
+        w3 = self._multicall.contract.w3
+        self._target = w3.eth.contract(w3.to_checksum_address(target_address), abi=target_abi)
         self._functions = {}
         self._setup_functions()
 

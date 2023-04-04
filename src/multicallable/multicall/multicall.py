@@ -11,7 +11,7 @@ DESCRIPTION
 
 from typing import List, Union
 
-from eth_abi import decode_single
+from eth_abi import decode
 from web3 import Web3
 from web3.contract import Contract
 
@@ -94,17 +94,17 @@ class Multicall:
             custom_chain_name: str = None
     ):
         if custom_address:
-            address = Web3.toChecksumAddress(custom_address)
+            address = Web3.to_checksum_address(custom_address)
         else:
             if custom_chain_name:
                 try:
-                    address = Web3.toChecksumAddress(MULTICALL_ADDRESS[custom_chain_name.lower()])
+                    address = Web3.to_checksum_address(MULTICALL_ADDRESS[custom_chain_name.lower()])
                 except KeyError:
                     raise ValueError(f'Chain name `{custom_chain_name}` is not in default dictionary')
             else:
                 chain_id = w3.eth.chain_id
                 try:
-                    address = Web3.toChecksumAddress(MULTICALL_ADDRESS[CHAIN_NANE[chain_id]])
+                    address = Web3.to_checksum_address(MULTICALL_ADDRESS[CHAIN_NANE[chain_id]])
                 except KeyError:
                     raise ValueError(f'Chain ID {chain_id} is not in default dictionary')
 
@@ -146,8 +146,8 @@ class Multicall:
                 continue
             for item in call.abi:
                 if item.get('name') == call.fn_name:
-                    out_type = '(' + ','.join(get_type(schema) for schema in item['outputs']) + ')'
-                    decoded_output = decode_single(out_type, data)
+                    out_types = tuple(get_type(schema) for schema in item['outputs'])
+                    decoded_output = decode(out_types, data)
                     if len(item['outputs']) == 1:
                         decoded_output = decoded_output[0]
                     outputs.append(decoded_output)
