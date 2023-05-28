@@ -116,6 +116,7 @@ class Multicall:
             self,
             calls: List[Call],
             require_success: bool = True,
+            block_identifier: str | int = 'latest',
     ) -> list:
         """
         Executes multicall for specified list of smart contracts functions.
@@ -127,12 +128,15 @@ class Multicall:
             require_success: bool
                 if true, all calls must return true, otherwise the multicall fails.
 
+            block_identifier: str | int
+                block identifier for web3 call
+
         Returns:
             list of outputs
         """
 
         block_number, block_hash, return_data = self.contract.functions.tryBlockAndAggregate(
-            require_success, [(call.target, call.call_data) for call in calls]).call()
+            require_success, [(call.target, call.call_data) for call in calls]).call(block_identifier=block_identifier)
 
         outputs = []
         for call, result in zip(calls, return_data):

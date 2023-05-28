@@ -33,7 +33,8 @@ class Multicallable:
                 self.function = function
                 self.params = params
 
-            def call(self, n: int = 1, require_success: bool = True, progress_bar: bool = False):
+            def call(self, n: int = 1, require_success: bool = True, progress_bar: bool = False,
+                     block_identifier: str | int = 'latest'):
                 mc = self.function.parent._multicall
                 calls = [Call(self.function.parent._target, self.function.name, args) for args in self.params]
                 result = []
@@ -43,20 +44,22 @@ class Multicallable:
                         print(f'\r    {bar(percentage)} {i}/{n} buckets    ', end='')
                     if not bucket:
                         continue
-                    block_number, block_hash, outputs = mc.call(bucket, require_success=require_success)
+                    block_number, block_hash, outputs = mc.call(bucket, require_success=require_success,
+                                                                block_identifier=block_identifier)
                     result.extend(outputs)
                 if progress_bar:
                     print(f'\r    {bar(100)} {n}/{n} buckets    ')
                 return result
 
-            def detailed_call(self, n: int = 1, require_success: bool = True):
+            def detailed_call(self, n: int = 1, require_success: bool = True, block_identifier: str | int = 'latest'):
                 mc = self.function.parent._multicall
                 calls = [Call(self.function.parent._target, self.function.name, args) for args in self.params]
                 result = []
                 for bucket in _split(calls, n):
                     if not bucket:
                         continue
-                    block_number, block_hash, outputs = mc.call(bucket, require_success=require_success)
+                    block_number, block_hash, outputs = mc.call(bucket, require_success=require_success,
+                                                                block_identifier=block_identifier)
                     if not result or result[-1]['block_number'] != block_number:
                         result.append(dict(block_number=block_number, result=[]))
                     result[-1]['result'].extend(outputs)
