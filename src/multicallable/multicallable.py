@@ -1,3 +1,5 @@
+from typing import Union
+
 from web3 import Web3
 
 from .multicall import Multicall, Call
@@ -34,7 +36,7 @@ class Multicallable:
                 self.params = params
 
             def call(self, n: int = 1, require_success: bool = True, progress_bar: bool = False,
-                     block_identifier: str | int = 'latest'):
+                     block_identifier: Union[str, int] = 'latest'):
                 mc = self.function.parent._multicall
                 calls = [Call(self.function.parent._target, self.function.name, args) for args in self.params]
                 result = []
@@ -51,7 +53,8 @@ class Multicallable:
                     print(f'\r    {bar(100)} {n}/{n} buckets    ')
                 return result
 
-            def detailed_call(self, n: int = 1, require_success: bool = True, block_identifier: str | int = 'latest'):
+            def detailed_call(self, n: int = 1, require_success: bool = True,
+                              block_identifier: Union[str, int] = 'latest'):
                 mc = self.function.parent._multicall
                 calls = [Call(self.function.parent._target, self.function.name, args) for args in self.params]
                 result = []

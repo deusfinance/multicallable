@@ -116,7 +116,7 @@ class Multicall:
             self,
             calls: List[Call],
             require_success: bool = True,
-            block_identifier: str | int = 'latest',
+            block_identifier: Union[str, int] = 'latest',
     ) -> list:
         """
         Executes multicall for specified list of smart contracts functions.
@@ -128,7 +128,7 @@ class Multicall:
             require_success: bool
                 if true, all calls must return true, otherwise the multicall fails.
 
-            block_identifier: str | int
+            block_identifier: Union[str, int]
                 block identifier for web3 call
 
         Returns:
