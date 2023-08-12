@@ -16,6 +16,7 @@ CHAIN_NANE = {
     100: 'gnosis',
     42220: 'celo',
     1088: 'metis',
+    2222: 'kava',
     42170: 'arbitrum-nova',
     97: 'bsc-testnet',
     80001: 'mumbai',  # Polygon testnet
@@ -44,6 +45,7 @@ MULTICALL_ADDRESS = {
     'gnosis': '0xcA11bde05977b3631167028862bE2a173976CA11',
     'celo': '0xcA11bde05977b3631167028862bE2a173976CA11',
     'metis': '0xcA11bde05977b3631167028862bE2a173976CA11',
+    'kava': '0xcA11bde05977b3631167028862bE2a173976CA11',
     'arbitrum-nova': '0xcA11bde05977b3631167028862bE2a173976CA11',
     'bsc-testnet': '0xcA11bde05977b3631167028862bE2a173976CA11',
     'mumbai': '0xcA11bde05977b3631167028862bE2a173976CA11',
@@ -55,3 +57,5 @@ MULTICALL_ADDRESS = {
     'rinkeby': '0xcA11bde05977b3631167028862bE2a173976CA11',
     'goerli': '0xcA11bde05977b3631167028862bE2a173976CA11',
 }
+
+DEFAULT_MAKER_DAO_MULTICALL_ADDRESS = '0xcA11bde05977b3631167028862bE2a173976CA11'

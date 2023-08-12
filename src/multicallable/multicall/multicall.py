@@ -15,7 +15,7 @@ from eth_abi import decode
 from web3 import Web3
 from web3.contract import Contract
 
-from .constants import MULTICALL_ABI, MULTICALL_ADDRESS, CHAIN_NANE
+from .constants import MULTICALL_ABI, MULTICALL_ADDRESS, CHAIN_NANE, DEFAULT_MAKER_DAO_MULTICALL_ADDRESS
 
 
 def get_type(schema):
@@ -96,17 +96,20 @@ class Multicall:
         if custom_address:
             address = Web3.to_checksum_address(custom_address)
         else:
+            address = DEFAULT_MAKER_DAO_MULTICALL_ADDRESS
             if custom_chain_name:
                 try:
                     address = Web3.to_checksum_address(MULTICALL_ADDRESS[custom_chain_name.lower()])
                 except KeyError:
-                    raise ValueError(f'Chain name `{custom_chain_name}` is not in default dictionary')
+                    pass
+                    # raise ValueError(f'Chain name `{custom_chain_name}` is not in default dictionary')
             else:
                 chain_id = w3.eth.chain_id
                 try:
                     address = Web3.to_checksum_address(MULTICALL_ADDRESS[CHAIN_NANE[chain_id]])
                 except KeyError:
-                    raise ValueError(f'Chain ID {chain_id} is not in default dictionary')
+                    pass
+                    # raise ValueError(f'Chain ID {chain_id} is not in default dictionary')
 
         abi = custom_abi or MULTICALL_ABI
 
