@@ -32,7 +32,7 @@ class AsyncMulticallable:
                     print(f'\r    {bar(0)} {0}/{n} buckets    ', end='')
 
                 i = 0
-                batch_results = [None] * n
+                batch_results = [None] * len(prepared_calls)
                 for task in asyncio.as_completed(prepared_calls):
                     task_result = await task
                     if progress_bar:
