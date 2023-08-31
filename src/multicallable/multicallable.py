@@ -3,29 +3,7 @@ from typing import Union
 from web3 import Web3
 
 from .multicall import Multicall, Call
-
-
-def bar(percentage: float, size: int = 40):
-    percentage = int(percentage)
-    hori_char = '━'
-    left_char = '╸'
-    pink = (249, 38, 114)
-    grey = (58, 58, 58)
-    green = (114, 156, 31)
-    start_pink = '\033[38;2;%d;%d;%dm' % pink
-    start_grey = '\033[38;2;%d;%d;%dm' % grey
-    start_green = '\033[38;2;%d;%d;%dm' % green
-    reset_color = '\033[39m'
-    if percentage >= 100:
-        return f'{start_green}{hori_char * size}{reset_color}'
-    filled = hori_char * (size * percentage // 100)
-    not_filled = hori_char * (size - len(filled) - 1)
-    return f'{start_pink}{filled}{left_char}{start_grey}{not_filled}{reset_color}'
-
-
-def _split(a, n):
-    k, m = divmod(len(a), n)
-    return (a[i * k + min(i, m):(i + 1) * k + min(i + 1, m)] for i in range(n))
+from .utils import split, bar
 
 
 class Multicallable:
@@ -40,7 +18,7 @@ class Multicallable:
                 mc = self.function.parent._multicall
                 calls = [Call(self.function.parent._target, self.function.name, args) for args in self.params]
                 result = []
-                for i, bucket in enumerate(_split(calls, n)):
+                for i, bucket in enumerate(split(calls, n)):
                     if progress_bar:
                         percentage = i / n * 100
                         print(f'\r    {bar(percentage)} {i}/{n} buckets    ', end='')
@@ -58,7 +36,7 @@ class Multicallable:
                 mc = self.function.parent._multicall
                 calls = [Call(self.function.parent._target, self.function.name, args) for args in self.params]
                 result = []
-                for bucket in _split(calls, n):
+                for bucket in split(calls, n):
                     if not bucket:
                         continue
                     block_number, block_hash, outputs = mc.call(bucket, require_success=require_success,
@@ -72,7 +50,7 @@ class Multicallable:
             self.name = name
             self.parent = parent
 
-        def __call__(self, params: list) -> list:
+        def __call__(self, params: list) -> FCall:
             return self.FCall(self, params)
 
     def __init__(self, target_address: str, target_abi: str, w3: Web3 = None, multicall: Multicall = None):

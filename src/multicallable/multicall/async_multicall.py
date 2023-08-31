@@ -1,5 +1,5 @@
 """NAME
-    Multicall
+    AsyncMulticall
 
 DESCRIPTION
     A multicall for use with pure Web3 library.
@@ -12,17 +12,17 @@ DESCRIPTION
 from typing import List, Union
 
 from eth_abi import decode
-from web3 import Web3
-from web3.contract import Contract
+from web3 import AsyncWeb3
+from web3.contract import AsyncContract
 
 from .constants import MULTICALL_ABI, MULTICALL_ADDRESS, CHAIN_NANE, DEFAULT_MAKER_DAO_MULTICALL_ADDRESS
 from ..utils import get_type
 
 
-class Call:
+class AsyncCall:
     """
     NAME
-        Multicall
+        AsyncCall
 
     ATTRIBUTES
         contract: Web3.eth.Contract
@@ -39,7 +39,7 @@ class Call:
 
     def __init__(
             self,
-            contract: Contract,
+            contract: AsyncContract,
             fn_name: str,
             args: Union[list, tuple] = None,
             kwargs: dict = None,
@@ -53,10 +53,10 @@ class Call:
         self.call_data = call_data
 
 
-class Multicall:
+class AsyncMulticall:
     """
     NAME
-        Multicall
+        AsyncMulticall
 
     DESCRIPTION
        The main multicall class.
@@ -78,27 +78,27 @@ class Multicall:
 
     """
 
-    def __init__(
-            self,
-            w3: Web3,
-            custom_address: str = None,
-            custom_abi: str = None,
-            custom_chain_name: str = None
-    ):
+    def __init__(self):
+        self.contract = None
+
+    async def setup(self, w3: AsyncWeb3,
+                    custom_address: str = None,
+                    custom_abi: str = None,
+                    custom_chain_name: str = None):
         if custom_address:
-            address = Web3.to_checksum_address(custom_address)
+            address = AsyncWeb3.to_checksum_address(custom_address)
         else:
             address = DEFAULT_MAKER_DAO_MULTICALL_ADDRESS
             if custom_chain_name:
                 try:
-                    address = Web3.to_checksum_address(MULTICALL_ADDRESS[custom_chain_name.lower()])
+                    address = AsyncWeb3.to_checksum_address(MULTICALL_ADDRESS[custom_chain_name.lower()])
                 except KeyError:
                     pass
                     # raise ValueError(f'Chain name `{custom_chain_name}` is not in default dictionary')
             else:
-                chain_id = w3.eth.chain_id
+                chain_id = await w3.eth.chain_id
                 try:
-                    address = Web3.to_checksum_address(MULTICALL_ADDRESS[CHAIN_NANE[chain_id]])
+                    address = AsyncWeb3.to_checksum_address(MULTICALL_ADDRESS[CHAIN_NANE[chain_id]])
                 except KeyError:
                     pass
                     # raise ValueError(f'Chain ID {chain_id} is not in default dictionary')
@@ -107,11 +107,12 @@ class Multicall:
 
         self.contract = w3.eth.contract(address=address, abi=abi)
 
-    def call(
+    async def call(
             self,
-            calls: List[Call],
+            calls: List[AsyncCall],
             require_success: bool = True,
             block_identifier: Union[str, int] = 'latest',
+            metadata=None
     ) -> tuple:
         """
         Executes multicall for specified list of smart contracts functions.
@@ -126,12 +127,17 @@ class Multicall:
             block_identifier: Union[str, int]
                 block identifier for web3 call
 
+            metadata: Any
+                any metadata that user wants to be passed in outputs
+
         Returns:
             list of outputs
         """
 
-        block_number, block_hash, return_data = self.contract.functions.tryBlockAndAggregate(
-            require_success, [(call.target, call.call_data) for call in calls]).call(block_identifier=block_identifier)
+        block_number, block_hash, return_data = (
+            await self.contract.functions.tryBlockAndAggregate(require_success,
+                                                               [(call.target, call.call_data) for call in calls])
+            .call(block_identifier=block_identifier))
 
         outputs = []
         for call, result in zip(calls, return_data):
@@ -152,4 +158,4 @@ class Multicall:
                     outputs.append(decoded_output)
                     break
 
-        return block_number, block_hash, outputs
+        return block_number, block_hash, outputs, metadata

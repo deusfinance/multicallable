@@ -1,126 +1,141 @@
-## Multicallable
+## Multicallable: Simplified Interface for Multicall
 
-Easy way to work with Multicall package
+`Multicallable` provides a streamlined way to work with the Multicall package, allowing you to batch multiple contract calls into a single request.
 
 ### Installation
+
+Install the package using the following command:
 
 ```shell
 pip install -U multicallable
 ```
 
-### Usage
+### Getting Started
 
-Importing Web3
+#### Initialize Web3 or AsyncWeb3
+
+First, import the Web3 library and set up a Web3 instance. The setup differs depending on whether you are using synchronous or asynchronous operations.
+
+For synchronous operations:
+
 ```python
->>> from web3 import Web3
+from web3 import Web3
+
+# Specify Ethereum RPC URL
+ETH_RPC_URL = 'https://rpc.ankr.com/eth'
+
+# Initialize Web3 instance
+w3 = Web3(Web3.HTTPProvider(ETH_RPC_URL))
 ```
 
-Initializing Web3 instance
+For asynchronous operations:
+
 ```python
->>> ETH_RPC_URL = 'https://rpc.ankr.com/eth'
->>> w3 = Web3(Web3.HTTPProvider(ETH_RPC_URL))
+from web3 import AsyncWeb3
+
+# Initialize AsyncWeb3 instance
+w3 = AsyncWeb3(AsyncWeb3.AsyncHTTPProvider(ETH_RPC_URL))
 ```
 
-Importing Multicallable
+#### Import and Initialize Multicallable
+
+Next, import the `Multicallable` class and initialize it for a specific token:
+
 ```python
->>> from multicallable import Multicallable
+from multicallable import Multicallable
+
+# Truncated ERC20 ABI for demonstration
+ERC20_ABI = '[{"constant":true,"inputs":[],"name":"name", ...'
+
+# sample token contract address
+TOKEN = '0xDE5ed76E7c05eC5e4572CfC88d1ACEA165109E44'
+
+# Initialize Multicallable instance
+multicallable = Multicallable(TOKEN, ERC20_ABI, w3)
 ```
 
-Initializing Multicallable instance for Deus token
+#### AsyncMulticallable: The Asynchronous Alternative
+
+For asynchronous use-cases, `AsyncMulticallable` is available. Unlike `Multicallable`, its constructor is empty, and it includes an asynchronous `setup` function that takes the same parameters:
+
 ```python
-# ERC20 ABI string is cropped for readability
->>> ERC20_ABI = '[{"constant":true,"inputs":[],"name":"name", ...
->>> DEUS_TOKEN = '0xDE5ed76E7c05eC5e4572CfC88d1ACEA165109E44'
->>> deus = Multicallable(DEUS_TOKEN, ERC20_ABI, w3)
+from multicallable import AsyncMulticallable
+
+# Initialize AsyncMulticallable instance
+async_multicallable = AsyncMulticallable()
+await async_multicallable.setup(TOKEN, ERC20_ABI, w3)  # Make sure w3 is an AsyncWeb3 instance
 ```
 
-Calling balanceOf function for a list of addresses
+### Basic Operations
+
+#### Querying Multiple Balances
+
+For synchronous operations:
+
 ```python
->>> addresses = [
-...     '0xa345c89c07fEB0A13937eecE0204327271904cB7',
-...     '0xF493284a730e3D561Bf81f52991AF0C8D9227C35',
-...     '0x19dceFD603ea112CF547Cdddb8D68f61c6F4c73C',
-...     '0x633cBf6347ddddb5fEc65ad803b4e0B282ADdBd7',
-... ]
->>> deus.balanceOf(addresses).call()
-[3955776201653330000000,
- 1499972538000000000000,
- 334010000000000000000,
- 135760891050327000000]
+addresses = [
+    # List of addresses
+]
+balances = multicallable.balanceOf(addresses).call()
 ```
 
-#### Get more details for call
+For asynchronous operations:
+
 ```python
->>> addresses = [
-...     '0xa345c89c07fEB0A13937eecE0204327271904cB7',
-...     '0xF493284a730e3D561Bf81f52991AF0C8D9227C35',
-...     '0x19dceFD603ea112CF547Cdddb8D68f61c6F4c73C',
-...     '0x633cBf6347ddddb5fEc65ad803b4e0B282ADdBd7',
-... ]
->>> deus.balanceOf(addresses).detailed_call()
-[{'block_number': 54040756,
-  'result': [3955776201653330000000,
-             1499972538000000000000,
-             334010000000000000000,
-             135760891050327000000]}]
+addresses = [
+    # List of addresses
+]
+balances = await async_multicallable.balanceOf(addresses).call()
 ```
 
-#### Ignore failed calls
+#### Detailed Call Information
 
-If `require_success` is `True`, all calls must return true, otherwise the multicall fails. \
-The default value is `True`.
+For synchronous operations:
+
 ```python
->>> contract_address = '0x15BB7787Be4E03E6Caa09D2fF502564D3eD67Ec2'
->>> contract_abi = '[{"inputs":[{"internalType":"uint256","name":"num","type":"uint256"}],"name":"getNum","outputs":[{"internalType":"uint256","name":"","type":"uint256"}],"stateMutability":"pure","type":"function"}]'
->>> mc = Multicallable(contract_address, contract_abi, w3)
->>> mc.getNum(list(range(7))).call(require_success=True)
-Traceback (most recent call last):
-.
-.
-.
-web3.exceptions.ContractLogicError: execution reverted: Multicall3: call failed
-
->>> mc.getNum(list(range(7))).call(require_success=False)
-[ValueError('Bad number!'),
- 2,
- 3,
- 4,
- 5,
- ValueError('Bad number!'),
- 7]
+detailed_info = multicallable.balanceOf(addresses).detailed_call()
 ```
 
-#### Change number of buckets
+For asynchronous operations:
 
-Set `n` as the number of buckets for calling Multicall contract for large number of calls. \
-The default value is `1`.
 ```python
->>> result = mc.getNum(list(range(70000))).call(require_success=False)
-Traceback (most recent call last):
-.
-.
-.
-ValueError: {'code': -32000, 'message': 'out of gas'}
-
->>> result = mc.getNum(list(range(70000))).call(require_success=False, n=100)
->>> len(result)
-70000
+detailed_info = await async_multicallable.balanceOf(addresses).detailed_call()
 ```
 
-#### Show progress bar
-Use `progress_bar=True` to show progress bar while sending buckets.
+### Advanced Features
+
+#### Handling Failed Calls
+
+By default, all calls must succeed for the batch call to return successfully. Use `require_success=False` to allow partial success:
+
 ```python
->>> result = mc.getNum(list(range(70000))).call(n=100, progress_bar=True, require_success=False)
-    ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 100/100 buckets
->>> len(result)
-70000
+mc = Multicallable(contract_address, contract_abi, w3)
+partial_result = mc.getNum(list(range(7))).call(require_success=False)
 ```
 
-#### Use with custom Multicall
+#### Batching Large Number of Calls
 
-It is possible to pass a Multicall instance with custom address and abi to Multicallable
+For large number of calls, you can specify the number of buckets using the `n` parameter:
+
 ```python
->>> from multicallable.multicall import Multicall
->>> multicall = Multicall(w3, custom_address, custom_abi)
->>> mc = Multicallable(contract_address, contract_abi, multicall=multicall)
+result = mc.getNum(list(range(70000))).call(require_success=False, n=100)
+```
+
+#### Progress Indicator
+
+Enable a progress bar for better visibility into the batch processing:
+
+```python
+result = mc.getNum(list(range(70000))).call(n=100, progress_bar=True, require_success=False)
+```
+
+#### Custom Multicall Instance
+
+You can also use a custom Multicall instance with a custom address and ABI:
+
+```python
+from multicallable.multicall import Multicall
+
+multicall = Multicall(w3, custom_address, custom_abi)
+mc = Multicallable(contract_address, contract_abi, multicall=multicall)
 ```

@@ -10,3 +10,4 @@ __email__ = "hassan.abbp@gmail.com"
 __status__ = "Production"
 
 from .multicallable import Multicallable
+from .async_multicallable import AsyncMulticallable
