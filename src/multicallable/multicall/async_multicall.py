@@ -133,11 +133,14 @@ class AsyncMulticall:
         Returns:
             list of outputs
         """
-
+        if block_identifier != 'latest':
+            kwargs = dict(block_identifier=block_identifier)
+        else:
+            kwargs = dict()
         block_number, block_hash, return_data = (
             await self.contract.functions.tryBlockAndAggregate(require_success,
                                                                [(call.target, call.call_data) for call in calls])
-            .call(block_identifier=block_identifier))
+            .call(**kwargs))
 
         outputs = []
         for call, result in zip(calls, return_data):
