@@ -14,6 +14,7 @@ from typing import List, Union
 from eth_abi import decode
 from web3 import Web3
 from web3.contract import Contract
+from web3.exceptions import BadFunctionCallOutput
 
 from .constants import MULTICALL_ABI, MULTICALL_ADDRESS, CHAIN_NANE, DEFAULT_MAKER_DAO_MULTICALL_ADDRESS
 from ..utils import get_type
@@ -137,11 +138,10 @@ class Multicall:
             require_success, [(call.target, call.call_data) for call in calls]).call(**kwargs)
 
         outputs = []
-        for call, result in zip(calls, return_data):
-            success, data = result
-            if not success or not data:
+        for call, (success, data) in zip(calls, return_data):
+            if not success:
                 try:
-                    error_message = ''.join(chr(c) for c in data[-32:] if c)
+                    error_message = ''.join(chr(c) for c in data if chr(c).isprintable())
                 except:
                     error_message = 'Error'
                 outputs.append(ValueError(error_message))
@@ -149,6 +149,13 @@ class Multicall:
             for item in call.abi:
                 if item.get('name') == call.fn_name:
                     out_types = tuple(get_type(schema) for schema in item['outputs'])
+                    if out_types and not data:
+                        if require_success:
+                            raise BadFunctionCallOutput("Could not call contract function for a Call. "
+                                                        "Check Call's contract address correctness.")
+                        else:
+                            outputs.append(BadFunctionCallOutput())
+                            break
                     decoded_output = decode(out_types, data)
                     if len(item['outputs']) == 1:
                         decoded_output = decoded_output[0]
