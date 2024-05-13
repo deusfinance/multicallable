@@ -139,3 +139,8 @@ from multicallable.multicall import Multicall
 multicall = Multicall(w3, custom_address, custom_abi)
 mc = Multicallable(contract_address, contract_abi, multicall=multicall)
 ```
+
+## Authors
+
+- **[MiKO](https://github.com/MiKoronjoo)** - *Initial work*
+- **[Naveed](https://github.com/Navid-Fkh)** - *Contributor*

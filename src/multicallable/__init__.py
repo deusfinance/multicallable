@@ -1,12 +1,12 @@
 # Multicallable - Easy way to work with Multicall package
 
-__author__ = "Hassan Abbasi, Mojtaba Farokhi"
-__copyright__ = "Copyright (C) 2022-2023, Deus Finance <https://github.com/deusfinance>"
-__credits__ = ["Hassan Abbasi", "Mojtaba Farokhi"]
+__author__ = "MiKO, Naveed"
+__copyright__ = "Copyright (C) 2022-2024, Deus Finance <https://github.com/deusfinance>"
+__credits__ = ["MiKO", "Naveed"]
 __license__ = "MIT"
-__version__ = "6.0.2"
-__maintainer__ = "Hassan Abbasi"
-__email__ = "hassan.abbp@gmail.com"
+__version__ = "6.0.3"
+__maintainer__ = "MiKO"
+__email__ = "mikoronjoo@gmail.com, naveedinno@proton.me"
 __status__ = "Production"
 
 from .multicallable import Multicallable
