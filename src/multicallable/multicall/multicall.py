@@ -9,7 +9,7 @@ DESCRIPTION
 
 """
 
-from typing import List, Union
+from typing import List, Union, Tuple, Any, Optional
 
 from eth_abi import decode
 from web3 import Web3
@@ -36,16 +36,19 @@ class Call:
         args: list
             A list of arguments to be passed to a called contract function.
 
+        kwargs: dict
+            keyword arguments to be passed to a called contract function.
+
     """
 
     def __init__(
             self,
             contract: Contract,
             fn_name: str,
-            args: Union[list, tuple] = None,
-            kwargs: dict = None,
+            args: Optional[Union[list, tuple]] = None,
+            kwargs: Optional[dict] = None,
     ):
-        if not isinstance(args, list) and not isinstance(args, tuple):
+        if args is not None and not isinstance(args, list) and not isinstance(args, tuple):
             args = [args]
         call_data = contract.encodeABI(fn_name=fn_name, args=args, kwargs=kwargs)
         self.target = contract.address
@@ -113,7 +116,7 @@ class Multicall:
             calls: List[Call],
             require_success: bool = True,
             block_identifier: Union[str, int] = 'latest',
-    ) -> tuple:
+    ) -> Tuple[int, bytes, List[Any]]:
         """
         Executes multicall for specified list of smart contracts functions.
 
@@ -128,7 +131,9 @@ class Multicall:
                 block identifier for web3 call
 
         Returns:
-            list of outputs
+            block number of fetched data
+            block hash of fetched data
+            list of outputs (fetched data)
         """
         if block_identifier != 'latest':
             kwargs = dict(block_identifier=block_identifier)
