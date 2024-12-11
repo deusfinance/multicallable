@@ -46,7 +46,7 @@ class AsyncCall:
     ):
         if not isinstance(args, list) and not isinstance(args, tuple):
             args = [args]
-        call_data = contract.encodeABI(fn_name=fn_name, args=args, kwargs=kwargs)
+        call_data = contract.encode_abi(abi_element_identifier=fn_name, args=args, kwargs=kwargs)
         self.target = contract.address
         self.abi = contract.abi
         self.fn_name = fn_name
@@ -137,17 +137,15 @@ class AsyncMulticall:
             kwargs = dict(block_identifier=block_identifier)
         else:
             kwargs = dict()
-        block_number, block_hash, return_data = (
-            await self.contract.functions.tryBlockAndAggregate(require_success,
-                                                               [(call.target, call.call_data) for call in calls])
-            .call(**kwargs))
+        block_number, block_hash, return_data = await self.contract.functions.tryBlockAndAggregate(
+            require_success, [(call.target, call.call_data) for call in calls]).call(**kwargs)
 
         outputs = []
         for call, result in zip(calls, return_data):
             success, data = result
             if not success or not data:
                 try:
-                    error_message = ''.join(chr(c) for c in data[-32:] if c)
+                    error_message = ''.join(chr(c) for c in data if chr(c).isprintable())
                 except:
                     error_message = 'Error'
                 outputs.append(ValueError(error_message))

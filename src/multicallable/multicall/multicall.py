@@ -50,7 +50,7 @@ class Call:
     ):
         if args is not None and not isinstance(args, list) and not isinstance(args, tuple):
             args = [args]
-        call_data = contract.encodeABI(fn_name=fn_name, args=args, kwargs=kwargs)
+        call_data = contract.encode_abi(abi_element_identifier=fn_name, args=args, kwargs=kwargs)
         self.target = contract.address
         self.abi = contract.abi
         self.fn_name = fn_name
