@@ -15,8 +15,10 @@ from eth_abi import decode
 from web3 import Web3
 from web3.contract import Contract
 from web3.exceptions import BadFunctionCallOutput
+from web3.types import BlockIdentifier, StateOverride, TxParams
 
-from .constants import MULTICALL_ABI, MULTICALL_ADDRESS, CHAIN_NANE, DEFAULT_MAKER_DAO_MULTICALL_ADDRESS
+from .constants import MULTICALL_ABI, MULTICALL_ADDRESS, CHAIN_NANE, DEFAULT_MAKER_DAO_MULTICALL_ADDRESS, \
+    MULTICALL_BYTECODE
 from ..utils import get_type
 
 
@@ -87,10 +89,15 @@ class Multicall:
             w3: Web3,
             custom_address: str = None,
             custom_abi: str = None,
-            custom_chain_name: str = None
+            custom_chain_name: str = None,
+            impersonated_address: str = None
     ):
+        self._impersonated = False
         if custom_address:
             address = Web3.to_checksum_address(custom_address)
+        elif impersonated_address:
+            self._impersonated = True
+            address = Web3.to_checksum_address(impersonated_address)
         else:
             address = DEFAULT_MAKER_DAO_MULTICALL_ADDRESS
             if custom_chain_name:
@@ -115,7 +122,10 @@ class Multicall:
             self,
             calls: List[Call],
             require_success: bool = True,
-            block_identifier: Union[str, int] = 'latest',
+            block_identifier: BlockIdentifier = None,
+            transaction: Optional[TxParams] = None,
+            state_override: Optional[StateOverride] = None,
+            ccip_read_enabled: Optional[bool] = None
     ) -> Tuple[int, bytes, List[Any]]:
         """
         Executes multicall for specified list of smart contracts functions.
@@ -127,20 +137,38 @@ class Multicall:
             require_success: bool
                 if true, all calls must return true, otherwise the multicall fails.
 
-            block_identifier: Union[str, int]
+            block_identifier: BlockIdentifier
                 block identifier for web3 call
+
+            transaction: TxParams
+                dictionary of transaction info for web3 call
+
+            state_override: StateOverride
+                state override for web3 call
+
+            ccip_read_enabled: bool
+                boolean flag that enables or disables CCIP Read support for web3 calls
 
         Returns:
             block number of fetched data
             block hash of fetched data
             list of outputs (fetched data)
         """
-        if block_identifier != 'latest':
-            kwargs = dict(block_identifier=block_identifier)
-        else:
-            kwargs = dict()
+        if self._impersonated:
+            if state_override is None:
+                state_override = {self.contract.address: dict(code=MULTICALL_BYTECODE)}
+            elif self.contract.address in state_override:
+                state_override[self.contract.address]['code'] = MULTICALL_BYTECODE
+            else:
+                state_override[self.contract.address] = dict(code=MULTICALL_BYTECODE)
+
         block_number, block_hash, return_data = self.contract.functions.tryBlockAndAggregate(
-            require_success, [(call.target, call.call_data) for call in calls]).call(**kwargs)
+            require_success, [(call.target, call.call_data) for call in calls]).call(
+            transaction=transaction,
+            block_identifier=block_identifier,
+            state_override=state_override,
+            ccip_read_enabled=ccip_read_enabled
+        )
 
         outputs = []
         for call, (success, data) in zip(calls, return_data):

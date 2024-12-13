@@ -9,13 +9,16 @@ DESCRIPTION
 
 """
 
-from typing import List, Union
+from typing import List, Union, Optional, Any
 
 from eth_abi import decode
 from web3 import AsyncWeb3
 from web3.contract import AsyncContract
+from web3.exceptions import BadFunctionCallOutput
+from web3.types import BlockIdentifier, StateOverride, TxParams
 
-from .constants import MULTICALL_ABI, MULTICALL_ADDRESS, CHAIN_NANE, DEFAULT_MAKER_DAO_MULTICALL_ADDRESS
+from .constants import MULTICALL_ABI, MULTICALL_ADDRESS, CHAIN_NANE, DEFAULT_MAKER_DAO_MULTICALL_ADDRESS, \
+    MULTICALL_BYTECODE
 from ..utils import get_type
 
 
@@ -80,13 +83,18 @@ class AsyncMulticall:
 
     def __init__(self):
         self.contract = None
+        self._impersonated = False
 
     async def setup(self, w3: AsyncWeb3,
                     custom_address: str = None,
                     custom_abi: str = None,
-                    custom_chain_name: str = None):
+                    custom_chain_name: str = None,
+                    impersonated_address: str = None):
         if custom_address:
             address = AsyncWeb3.to_checksum_address(custom_address)
+        elif impersonated_address:
+            self._impersonated = True
+            address = AsyncWeb3.to_checksum_address(impersonated_address)
         else:
             address = DEFAULT_MAKER_DAO_MULTICALL_ADDRESS
             if custom_chain_name:
@@ -111,8 +119,11 @@ class AsyncMulticall:
             self,
             calls: List[AsyncCall],
             require_success: bool = True,
-            block_identifier: Union[str, int] = 'latest',
-            metadata=None
+            block_identifier: BlockIdentifier = None,
+            transaction: Optional[TxParams] = None,
+            state_override: Optional[StateOverride] = None,
+            ccip_read_enabled: Optional[bool] = None,
+            metadata: Any = None
     ) -> tuple:
         """
         Executes multicall for specified list of smart contracts functions.
@@ -124,8 +135,17 @@ class AsyncMulticall:
             require_success: bool
                 if true, all calls must return true, otherwise the multicall fails.
 
-            block_identifier: Union[str, int]
+            block_identifier: BlockIdentifier
                 block identifier for web3 call
+
+            transaction: TxParams
+                dictionary of transaction info for web3 call
+
+            state_override: StateOverride
+                state override for web3 call
+
+            ccip_read_enabled: bool
+                boolean flag that enables or disables CCIP Read support for web3 calls
 
             metadata: Any
                 any metadata that user wants to be passed in outputs
@@ -133,17 +153,25 @@ class AsyncMulticall:
         Returns:
             list of outputs
         """
-        if block_identifier != 'latest':
-            kwargs = dict(block_identifier=block_identifier)
-        else:
-            kwargs = dict()
+        if self._impersonated:
+            if state_override is None:
+                state_override = {self.contract.address: dict(code=MULTICALL_BYTECODE)}
+            elif self.contract.address in state_override:
+                state_override[self.contract.address]['code'] = MULTICALL_BYTECODE
+            else:
+                state_override[self.contract.address] = dict(code=MULTICALL_BYTECODE)
+
         block_number, block_hash, return_data = await self.contract.functions.tryBlockAndAggregate(
-            require_success, [(call.target, call.call_data) for call in calls]).call(**kwargs)
+            require_success, [(call.target, call.call_data) for call in calls]).call(
+            transaction=transaction,
+            block_identifier=block_identifier,
+            state_override=state_override,
+            ccip_read_enabled=ccip_read_enabled
+        )
 
         outputs = []
-        for call, result in zip(calls, return_data):
-            success, data = result
-            if not success or not data:
+        for call, (success, data) in zip(calls, return_data):
+            if not success:
                 try:
                     error_message = ''.join(chr(c) for c in data if chr(c).isprintable())
                 except:
@@ -153,6 +181,13 @@ class AsyncMulticall:
             for item in call.abi:
                 if item.get('name') == call.fn_name:
                     out_types = tuple(get_type(schema) for schema in item['outputs'])
+                    if out_types and not data:
+                        if require_success:
+                            raise BadFunctionCallOutput("Could not call contract function for a Call. "
+                                                        "Check Call's contract address correctness.")
+                        else:
+                            outputs.append(BadFunctionCallOutput())
+                            break
                     decoded_output = decode(out_types, data)
                     if len(item['outputs']) == 1:
                         decoded_output = decoded_output[0]
