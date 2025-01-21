@@ -9,13 +9,17 @@ DESCRIPTION
 
 """
 
-from typing import List, Union, Optional, Any
+from typing import List, Union, Optional, Any, Tuple
 
 from eth_abi import decode
+from eth_typing import HexStr
+from eth_utils import get_normalized_abi_inputs, get_aligned_abi_inputs
 from web3 import AsyncWeb3
-from web3.contract import AsyncContract
+from web3.contract.async_contract import AsyncContract, AsyncContractFunction
 from web3.exceptions import BadFunctionCallOutput
 from web3.types import BlockIdentifier, StateOverride, TxParams
+from web3.utils import get_abi_element
+from web3._utils.contracts import encode_abi  # noqa
 
 from .constants import MULTICALL_ABI, MULTICALL_ADDRESS, CHAIN_NANE, DEFAULT_MAKER_DAO_MULTICALL_ADDRESS, \
     MULTICALL_BYTECODE
@@ -38,21 +42,27 @@ class AsyncCall:
         args: list
             A list of arguments to be passed to a called contract function.
 
+        kwargs: dict
+            keyword arguments to be passed to a called contract function.
+
     """
 
     def __init__(
             self,
             contract: AsyncContract,
             fn_name: str,
-            args: Union[list, tuple] = None,
-            kwargs: dict = None,
+            args: Optional[Union[list, tuple]] = None,
+            kwargs: Optional[dict] = None,
     ):
-        if not isinstance(args, list) and not isinstance(args, tuple):
+        if args is None:
+            args = []
+        if kwargs is None:
+            kwargs = {}
+        if args and not isinstance(args, (list, tuple)):
             args = [args]
         call_data = contract.encode_abi(abi_element_identifier=fn_name, args=args, kwargs=kwargs)
         self.target = contract.address
-        self.abi = contract.abi
-        self.fn_name = fn_name
+        self.abi = get_abi_element(contract.abi, fn_name, *args, abi_codec=contract.w3.codec, **kwargs)
         self.call_data = call_data
 
 
@@ -115,22 +125,27 @@ class AsyncMulticall:
 
         self.contract = w3.eth.contract(address=address, abi=abi)
 
+    def _encode_data(self, function: AsyncContractFunction) -> HexStr:
+        fn_inputs = get_normalized_abi_inputs(function.abi, *function.args, **function.kwargs)
+        _, aligned_fn_inputs = get_aligned_abi_inputs(function.abi, fn_inputs)
+        return encode_abi(self.contract.w3, function.abi, aligned_fn_inputs, function.selector)
+
     async def call(
             self,
-            calls: List[AsyncCall],
+            calls: List[Union[AsyncCall, AsyncContractFunction]],
             require_success: bool = True,
             block_identifier: BlockIdentifier = None,
             transaction: Optional[TxParams] = None,
             state_override: Optional[StateOverride] = None,
             ccip_read_enabled: Optional[bool] = None,
             metadata: Any = None
-    ) -> tuple:
+    ) -> Tuple[int, bytes, List[Any], Any]:
         """
         Executes multicall for specified list of smart contracts functions.
 
         Parameters:
             calls: list(tuple)
-                list of Call objets
+                list of Call or ContractFunction objects
 
             require_success: bool
                 if true, all calls must return true, otherwise the multicall fails.
@@ -161,8 +176,10 @@ class AsyncMulticall:
             else:
                 state_override[self.contract.address] = dict(code=MULTICALL_BYTECODE)
 
+        input_data = [(call.target, call.call_data) if isinstance(call, AsyncCall) else
+                      (call.address, self._encode_data(call)) for call in calls]
         block_number, block_hash, return_data = await self.contract.functions.tryBlockAndAggregate(
-            require_success, [(call.target, call.call_data) for call in calls]).call(
+            require_success, input_data).call(
             transaction=transaction,
             block_identifier=block_identifier,
             state_override=state_override,
@@ -178,20 +195,18 @@ class AsyncMulticall:
                     error_message = 'Error'
                 outputs.append(ValueError(error_message))
                 continue
-            for item in call.abi:
-                if item.get('name') == call.fn_name:
-                    out_types = tuple(get_type(schema) for schema in item['outputs'])
-                    if out_types and not data:
-                        if require_success:
-                            raise BadFunctionCallOutput("Could not call contract function for a Call. "
-                                                        "Check Call's contract address correctness.")
-                        else:
-                            outputs.append(BadFunctionCallOutput())
-                            break
-                    decoded_output = decode(out_types, data)
-                    if len(item['outputs']) == 1:
-                        decoded_output = decoded_output[0]
-                    outputs.append(decoded_output)
-                    break
+
+            out_types = tuple(get_type(schema) for schema in call.abi['outputs'])
+            if out_types and not data:
+                if require_success:
+                    raise BadFunctionCallOutput("Could not call contract function for a Call. "
+                                                "Check Call's contract address correctness.")
+                else:
+                    outputs.append(BadFunctionCallOutput())
+                    continue
+            decoded_output = decode(out_types, data)
+            if len(call.abi['outputs']) == 1:
+                decoded_output = decoded_output[0]
+            outputs.append(decoded_output)
 
         return block_number, block_hash, outputs, metadata
