@@ -143,4 +143,4 @@ mc = Multicallable(contract_address, contract_abi, multicall=multicall)
 ## Authors
 
 - **[MiKO](https://github.com/MiKoronjoo)** - *Initial work*
-- **[Naveed](https://github.com/Navid-Fkh)** - *Contributor*
+- **[Naveed](https://github.com/naveedinno)** - *Contributor*
